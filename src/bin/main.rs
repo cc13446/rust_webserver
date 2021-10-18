@@ -1,17 +1,23 @@
 use std::io::prelude::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::fs;
-use rust_webserver::ThreadPool;
+use std::panic::panic_any;
+use rust_webserver::thread_pool::ThreadPool;
 fn main() {
     // 绑定到一个端口
     let listen = TcpListener::bind("127.0.0.1:8888").expect("TCP 绑定失败");
-    for stream in listen.incoming() {
-        let pool = ThreadPool::new(4);
+    let pool = match ThreadPool::new(4) {
+        Ok(p) => p,
+        Err(s) => panic_any(s)
+    };
+
+    for stream in listen.incoming().take(2) {
         let stream = stream.expect("TCP 链接失败");
         pool.execute(|| {
             handle_connection(stream);
         });
     }
+    println!("Shutting down.");
 }
 
 fn handle_connection(mut stream: TcpStream) {
