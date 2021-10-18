@@ -11,7 +11,8 @@ fn main() {
         Err(s) => panic_any(s)
     };
 
-    for stream in listen.incoming().take(2) {
+    // 获取100个连接然后关机
+    for stream in listen.incoming().take(100) {
         let stream = stream.expect("TCP 链接失败");
         pool.execute(|| {
             handle_connection(stream);
