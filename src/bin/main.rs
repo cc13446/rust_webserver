@@ -1,14 +1,16 @@
-use std::fs;
 use std::io::prelude::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-
+use std::fs;
+use rust_webserver::ThreadPool;
 fn main() {
-
     // 绑定到一个端口
     let listen = TcpListener::bind("127.0.0.1:8888").expect("TCP 绑定失败");
     for stream in listen.incoming() {
+        let pool = ThreadPool::new(4);
         let stream = stream.expect("TCP 链接失败");
-        handle_connection(stream);
+        pool.execute(|| {
+            handle_connection(stream);
+        });
     }
 }
 
@@ -16,7 +18,7 @@ fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).expect("TCP 读取失败");
 
-    let response : String = if is_get_method(&buffer) {
+    let response: String = if is_get_method(&buffer) {
         let contents = read_file("resource/hello.html");
         format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
@@ -37,7 +39,12 @@ fn read_file(path: &str) -> String {
 fn get_not_found_response() -> String {
     let status_line = "HTTP/1.1 404 NOT FOUND\r\n";
     let contents = read_file("resource/404.html");
-    format!("{}Content-Length: {}\r\n\r\n{}", status_line, contents.len(), contents)
+    format!(
+        "{}Content-Length: {}\r\n\r\n{}",
+        status_line,
+        contents.len(),
+        contents
+    )
 }
 
 fn is_get_method(buffer: &[u8; 1024]) -> bool {
